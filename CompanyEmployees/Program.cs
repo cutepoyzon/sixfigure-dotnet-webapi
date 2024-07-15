@@ -1,7 +1,11 @@
 using CompanyEmployees.Extensions;
 using Contracts;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NLog;
+using NLog.Fluent;
+using Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +18,11 @@ builder.Services.ConfigureRepositoryManager();
 builder.Services.ConfigureServiceManager();
 builder.Services.ConfigureSqlContext(builder.Configuration);
 builder.Services.AddAutoMapper(typeof(Program));
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
 
 builder.Services.AddControllers(config =>
     {
@@ -31,6 +40,15 @@ app.ConfigureExceptionHandler(logger);
 
 if (app.Environment.IsProduction())
     app.UseHsts();
+
+// for quick database (usually for prototype)
+using var scope = app.Services.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<RepositoryContext>();
+if (dbContext.Database.GetPendingMigrations().Any())
+{
+    logger.LogInfo("Applying database migrations . .. ... ....");
+    dbContext.Database.Migrate();
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
