@@ -15,7 +15,7 @@ internal sealed class EmployeeRepository : RepositoryBase<Employee>, IEmployeeRe
         .OrderBy(e => e.Name)
         .ToList();
 
-    public Employee? GetEmployee(Guid companyId, Guid employeeId, bool trackChanges) => 
+    public Employee? GetEmployee(Guid companyId, Guid employeeId, bool trackChanges) =>
         FindByCondition(e => e.CompanyId.Equals(companyId) && e.Id.Equals(employeeId), trackChanges)
         .SingleOrDefault();
 
@@ -24,4 +24,6 @@ internal sealed class EmployeeRepository : RepositoryBase<Employee>, IEmployeeRe
         employee.CompanyId = companyId;
         Create(employee);
     }
+
+    public void DeleteEmployee(Employee employee) => Delete(employee);
 }
