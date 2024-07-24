@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.Mvc;
 using Service.Contracts;
 using Shared.DataTransferObjects;
 
@@ -43,7 +44,7 @@ namespace CompanyEmployees.Presentation.Controllers
         }
 
         [HttpPut("{id:guid}")]
-        public IActionResult UpdateEmployeeForCompany(Guid companyId, Guid id,[FromBody] EmployeeForUpdateDto employee)
+        public IActionResult UpdateEmployeeForCompany(Guid companyId, Guid id, [FromBody] EmployeeForUpdateDto employee)
         {
             if (employee is null)
                 return BadRequest("EmployeeForUpdateDto object is null");
@@ -53,6 +54,26 @@ namespace CompanyEmployees.Presentation.Controllers
 
             return NoContent();
         }
+
+        [HttpPatch("{id:guid}")]
+        public IActionResult PartiallyUpdateEmployeeForCompany(
+            Guid companyId,
+            Guid id,
+            [FromBody] JsonPatchDocument<EmployeeForUpdateDto> patchDoc
+        )
+        {
+            if (patchDoc is null)
+                return BadRequest("patchDoc object sent from client is null");
+
+            var (employeeToPatch, employeeEntity) = _serviceManager.EmployeeService
+                .GetEmployeeForPatch(companyId, id, trackCompanyChanges: false, trackEmployeeChanges: true);
+
+            patchDoc.ApplyTo(employeeToPatch);
+            _serviceManager.EmployeeService.SaveChangesForPatch(employeeToPatch, employeeEntity);
+
+            return NoContent();
+        }
+
 
         [HttpDelete("{id:guid}")]
         public IActionResult DeleteEmployeeForCompany(Guid companyId, Guid id)
