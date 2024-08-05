@@ -37,6 +37,12 @@ namespace CompanyEmployees.Presentation.Controllers
                 return BadRequest("EmployeeForCreationDto object is null");
             }
 
+            if (!ModelState.IsValid)
+            {
+                //ModelState.AddModelError("Custom field", "Custom field Error Message");
+                return UnprocessableEntity(ModelState);
+            }
+
             var employeeToReturn = _serviceManager.EmployeeService
                 .CreateEmployeeForCompany(companyId, employeeForCreation, trackChanges: false);
 
@@ -48,6 +54,11 @@ namespace CompanyEmployees.Presentation.Controllers
         {
             if (employee is null)
                 return BadRequest("EmployeeForUpdateDto object is null");
+
+            if (!ModelState.IsValid)
+            {
+                return UnprocessableEntity(ModelState);
+            }
 
             _serviceManager.EmployeeService
                 .UpdateEmployeeForCompany(companyId, id, employee, trackCompanyChanges: false, trackEmployeeChanges: true);
@@ -68,12 +79,17 @@ namespace CompanyEmployees.Presentation.Controllers
             var (employeeToPatch, employeeEntity) = _serviceManager.EmployeeService
                 .GetEmployeeForPatch(companyId, id, trackCompanyChanges: false, trackEmployeeChanges: true);
 
-            patchDoc.ApplyTo(employeeToPatch);
+            patchDoc.ApplyTo(employeeToPatch, ModelState);
+            TryValidateModel(employeeToPatch);
+            if (!ModelState.IsValid)
+            {
+                return UnprocessableEntity(ModelState);
+            }
+
             _serviceManager.EmployeeService.SaveChangesForPatch(employeeToPatch, employeeEntity);
 
             return NoContent();
         }
-
 
         [HttpDelete("{id:guid}")]
         public IActionResult DeleteEmployeeForCompany(Guid companyId, Guid id)
