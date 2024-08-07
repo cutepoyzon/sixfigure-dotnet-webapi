@@ -22,8 +22,7 @@ internal sealed class EmployeeService : IEmployeeService
 
     public async Task<IEnumerable<EmployeeDto>> GetEmployeesAsync(Guid companyId, bool trackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, trackChanges);
 
         var employeesFromDb = await _repository.Employee.GetEmployeesAsync(companyId, trackChanges);
         var employeesDto = _mapper.Map<IEnumerable<EmployeeDto>>(employeesFromDb);
@@ -31,22 +30,20 @@ internal sealed class EmployeeService : IEmployeeService
         return employeesDto;
     }
 
-    public async Task<EmployeeDto> GetEmployeeAsync(Guid companyId, Guid employeeId, bool trackChanges)
+    public async Task<EmployeeDto> GetEmployeeAsync(Guid companyId, Guid id, bool trackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, trackChanges);
 
-        var employeeFromDb = _repository.Employee.GetEmployeeAsync(companyId, employeeId, trackChanges) ??
-            throw new EmployeeNotFoundException(employeeId);
+        var employeeDb = await GetEmployeeForCompanyAndCheckIfItExists(companyId, id, trackChanges);
 
-        var employee = _mapper.Map<EmployeeDto>(employeeFromDb);
+        var employee = _mapper.Map<EmployeeDto>(employeeDb);
         return employee;
     }
 
-    public async Task<EmployeeDto> CreateEmployeeForCompanyAsync(Guid companyId, EmployeeForCreationDto employeeForCreation, bool trackChanges)
+    public async Task<EmployeeDto> CreateEmployeeForCompanyAsync(Guid companyId,
+        EmployeeForCreationDto employeeForCreation, bool trackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, trackChanges);
 
         var employeeEntity = _mapper.Map<Employee>(employeeForCreation);
 
@@ -54,54 +51,61 @@ internal sealed class EmployeeService : IEmployeeService
         await _repository.SaveAsync();
 
         var employeeToReturn = _mapper.Map<EmployeeDto>(employeeEntity);
+
         return employeeToReturn;
     }
 
     public async Task DeleteEmployeeForCompanyAsync(Guid companyId, Guid id, bool trackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, trackChanges);
 
-        var employeeForCompany = await _repository.Employee.GetEmployeeAsync(companyId, id, trackChanges) ??
-            throw new EmployeeNotFoundException(id);
+        var employeeDb = await GetEmployeeForCompanyAndCheckIfItExists(companyId, id, trackChanges);
 
-        _repository.Employee.DeleteEmployee(employeeForCompany);
+        _repository.Employee.DeleteEmployee(employeeDb);
         await _repository.SaveAsync();
     }
 
-    public async Task UpdateEmployeeForCompanyAsync(Guid companyId, Guid id, EmployeeForUpdateDto employeeForUpdate, bool trackCompanyChanges, bool trackEmployeeChanges)
+    public async Task UpdateEmployeeForCompanyAsync(Guid companyId, Guid id,
+        EmployeeForUpdateDto employeeForUpdate,
+        bool compTrackChanges, bool empTrackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackCompanyChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, compTrackChanges);
 
-        var employeeEntity = await _repository.Employee.GetEmployeeAsync(companyId, id, trackEmployeeChanges) ??
-            throw new EmployeeNotFoundException(id);
+        var employeeDb = await GetEmployeeForCompanyAndCheckIfItExists(companyId, id, empTrackChanges);
 
-        _mapper.Map(employeeForUpdate, employeeEntity);
+        _mapper.Map(employeeForUpdate, employeeDb);
         await _repository.SaveAsync();
     }
 
-    public async Task<(EmployeeForUpdateDto employeeToPatch, Employee employeeEntity)> GetEmployeeForPatchAsync(
-        Guid companyId,
-        Guid id,
-        bool trackCompanyChanges,
-        bool trackEmployeeChanges
-    )
+    public async Task<(EmployeeForUpdateDto employeeToPatch, Employee employeeEntity)> GetEmployeeForPatchAsync
+        (Guid companyId, Guid id, bool compTrackChanges, bool empTrackChanges)
     {
-        _ = await _repository.Company.GetCompanyAsync(companyId, trackCompanyChanges) ??
-            throw new CompanyNotFoundException(companyId);
+        await CheckIfCompanyExists(companyId, compTrackChanges);
 
-        var employeeEntity = await _repository.Employee.GetEmployeeAsync(companyId, id, trackEmployeeChanges) ??
-            throw new EmployeeNotFoundException(id);
+        var employeeDb = await GetEmployeeForCompanyAndCheckIfItExists(companyId, id, empTrackChanges);
 
-        var employeeToPatch = _mapper.Map<EmployeeForUpdateDto>(employeeEntity);
+        var employeeToPatch = _mapper.Map<EmployeeForUpdateDto>(employeeDb);
 
-        return (employeeToPatch, employeeEntity);
+        return (employeeToPatch: employeeToPatch, employeeEntity: employeeDb);
     }
 
     public async Task SaveChangesForPatchAsync(EmployeeForUpdateDto employeeToPatch, Employee employeeEntity)
     {
         _mapper.Map(employeeToPatch, employeeEntity);
         await _repository.SaveAsync();
+    }
+
+    private async Task CheckIfCompanyExists(Guid companyId, bool trackChanges)
+    {
+        _ = await _repository.Company.GetCompanyAsync(companyId, trackChanges) ??
+            throw new CompanyNotFoundException(companyId);
+    }
+
+    private async Task<Employee> GetEmployeeForCompanyAndCheckIfItExists
+        (Guid companyId, Guid id, bool trackChanges)
+    {
+        var employeeDb = await _repository.Employee.GetEmployeeAsync(companyId, id, trackChanges) ??
+            throw new EmployeeNotFoundException(id);
+        return employeeDb;
     }
 }

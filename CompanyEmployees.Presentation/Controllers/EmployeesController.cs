@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.JsonPatch;
+﻿using CompanyEmployees.Presentation.ActionFilters;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Service.Contracts;
 using Shared.DataTransferObjects;
@@ -30,19 +31,9 @@ namespace CompanyEmployees.Presentation.Controllers
         }
 
         [HttpPost]
+        [ServiceFilter(typeof(ValidationFilterAttribute))]
         public async Task<IActionResult> CreateEmployeeForCompany(Guid companyId, [FromBody] EmployeeForCreationDto employeeForCreation)
         {
-            if (employeeForCreation is null)
-            {
-                return BadRequest("EmployeeForCreationDto object is null");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                //ModelState.AddModelError("Custom field", "Custom field Error Message");
-                return UnprocessableEntity(ModelState);
-            }
-
             var employeeToReturn = await _serviceManager.EmployeeService
                 .CreateEmployeeForCompanyAsync(companyId, employeeForCreation, trackChanges: false);
 
