@@ -22,11 +22,16 @@ internal sealed class EmployeeService : IEmployeeService
     }
 
     public async Task<(IEnumerable<EmployeeDto> employees, MetaData metaData)> GetEmployeesAsync(
-        Guid companyId, 
-        EmployeeParameters employeeParameters, 
+        Guid companyId,
+        EmployeeParameters employeeParameters,
         bool trackChanges
     )
     {
+        if (!employeeParameters.ValidAgeRange)
+        {
+            throw new MaxAgeRangeBadRequestException();
+        }
+
         await CheckIfCompanyExists(companyId, trackChanges);
 
         var employeesWithMetaData = await _repository.Employee
@@ -38,6 +43,7 @@ internal sealed class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDto> GetEmployeeAsync(Guid companyId, Guid id, bool trackChanges)
     {
+
         await CheckIfCompanyExists(companyId, trackChanges);
 
         var employeeDb = await GetEmployeeForCompanyAndCheckIfItExists(companyId, id, trackChanges);
@@ -92,7 +98,7 @@ internal sealed class EmployeeService : IEmployeeService
 
         var employeeToPatch = _mapper.Map<EmployeeForUpdateDto>(employeeDb);
 
-        return (employeeToPatch: employeeToPatch, employeeEntity: employeeDb);
+        return (employeeToPatch, employeeEntity: employeeDb);
     }
 
     public async Task SaveChangesForPatchAsync(EmployeeForUpdateDto employeeToPatch, Employee employeeEntity)
@@ -108,8 +114,8 @@ internal sealed class EmployeeService : IEmployeeService
     }
 
     private async Task<Employee> GetEmployeeForCompanyAndCheckIfItExists(
-        Guid companyId, 
-        Guid id, 
+        Guid companyId,
+        Guid id,
         bool trackChanges
     )
     {
