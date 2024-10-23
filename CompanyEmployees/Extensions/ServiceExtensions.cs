@@ -1,5 +1,7 @@
 ﻿using Contracts;
 using LoggerService;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Repository;
 using Service;
@@ -44,4 +46,23 @@ public static class ServiceExtensions
                 .EnableSensitiveDataLogging()
                 .EnableDetailedErrors();
         });
+
+    public static void AddCustomMediaTypes(this IServiceCollection services)
+    {
+        services.Configure<MvcOptions>(config =>
+        {
+            var systemTextJsonOutputFormatter = config.OutputFormatters
+                    .OfType<SystemTextJsonOutputFormatter>()?.FirstOrDefault();
+
+            systemTextJsonOutputFormatter?.SupportedMediaTypes
+                .Add("application/vnd.codemaze.hateoas+json");
+
+            var xmlOutputFormatter = config.OutputFormatters
+                    .OfType<XmlDataContractSerializerOutputFormatter>()?
+                    .FirstOrDefault();
+
+            xmlOutputFormatter?.SupportedMediaTypes
+                .Add("application/vnd.codemaze.hateoas+xml");
+        });
+    }
 }
